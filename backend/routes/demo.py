@@ -20,6 +20,8 @@ UPLOAD_DIR = BASE_DIR / "data" / "uploads"
 async def process_request(
     background_tasks: BackgroundTasks,
     input_text: str = Form(...),
+    size: str = Form("One inch\t\t(413, 295)"),
+    bgcolor: str = Form("White"),
     photo: UploadFile = File(...),
 ) -> dict:
     saved_path: Path | None = None
@@ -31,7 +33,7 @@ async def process_request(
     saved_path.write_bytes(content)
 
     # Create task
-    task = create_task(input_text=input_text)
+    task = create_task(input_text=input_text, size=size, bgcolor=bgcolor)
     print(f"[DEBUG] Created task: {task.task_id}, input: {input_text}")
     
     # Use FastAPI BackgroundTasks (official way)

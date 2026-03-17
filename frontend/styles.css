@@ -179,6 +179,35 @@ h1 {
   margin-top: 6px;
 }
 
+.composer-options {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.option-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  color: #4d5f7c;
+  font-size: 13px;
+}
+
+.option-field span {
+  white-space: nowrap;
+}
+
+.option-field select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #cad7ec;
+  border-radius: 10px;
+  background: #fff;
+  color: #243247;
+}
+
 .composer-preview-button {
   width: 44px;
   height: 44px;
@@ -540,6 +569,15 @@ pre {
   .composer-row {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .composer-options {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .option-field {
+    justify-content: space-between;
   }
 
   .composer-preview-button {

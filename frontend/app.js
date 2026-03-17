@@ -3,6 +3,8 @@ const submitBtn = document.getElementById("submit-btn");
 const messages = document.getElementById("messages");
 const inputText = document.getElementById("input-text");
 const photoInput = document.getElementById("photo");
+const sizeSelect = document.getElementById("size-select");
+const bgcolorSelect = document.getElementById("bgcolor-select");
 const composerPreviewWrap = document.getElementById("composer-preview-wrap");
 const composerPreviewButton = document.getElementById("composer-preview-button");
 const composerPreviewRemove = document.getElementById("composer-preview-remove");
@@ -331,6 +333,8 @@ form.addEventListener("submit", async (event) => {
 
   const body = new FormData();
   body.append("input_text", inputValue);
+  body.append("size", sizeSelect.value);
+  body.append("bgcolor", bgcolorSelect.value);
   if (photoFile) {
     body.append("photo", photoFile);
   }

@@ -22,6 +22,8 @@ class TaskState:
     source: str = ""
     model: str = ""
     input_text: str = ""
+    size: str = "One inch\t\t(413, 295)"
+    bgcolor: str = "White"
     result: dict[str, Any] | None = None
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
@@ -29,9 +31,9 @@ class TaskState:
 TASKS: dict[str, TaskState] = {}
 
 
-def create_task(input_text: str) -> TaskState:
+def create_task(input_text: str, size: str = "One inch\t\t(413, 295)", bgcolor: str = "White") -> TaskState:
     task_id = str(uuid4())
-    task = TaskState(task_id=task_id, input_text=input_text)
+    task = TaskState(task_id=task_id, input_text=input_text, size=size, bgcolor=bgcolor)
     TASKS[task_id] = task
     return task
 
@@ -70,7 +72,7 @@ def run_task(task_id: str, uploaded_file: Path | None = None) -> None:
 
             task.progress = 55
             task.message = "已提交 ComfyUI，等待生成结果..."
-            comfy_result = run_id_photo_workflow(uploaded_file.name)
+            comfy_result = run_id_photo_workflow(uploaded_file.name, size=task.size, bgcolor=task.bgcolor)
             print(f"[DEBUG] ComfyUI done for {task_id}, prompt_id: {comfy_result.get('prompt_id')}")
 
             task.progress = 95
@@ -82,6 +84,8 @@ def run_task(task_id: str, uploaded_file: Path | None = None) -> None:
                 "reason": task.reason,
                 "source": task.source,
                 "model": task.model,
+                "size": comfy_result.get("size"),
+                "bgcolor": comfy_result.get("bgcolor"),
                 "preview_url": comfy_result.get("preview_url"),
                 "single_preview_url": comfy_result.get("single_preview_url"),
                 "layout_preview_url": comfy_result.get("layout_preview_url"),

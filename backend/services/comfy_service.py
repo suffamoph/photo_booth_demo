@@ -13,9 +13,24 @@ COMFY_BASE_URL = "http://127.0.0.1:8188"
 BACKEND_BASE_URL = "http://127.0.0.1:8000"
 WORKFLOW_FILE = Path(__file__).resolve().parents[1] / "workflows" / "idphoto_workflow_demo_api.json"
 UPLOAD_IMAGE_NODE_ID = "52"
+PARAMS_NODE_ID = "46"
 SINGLE_IMAGE_OUTPUT_NODE_ID = "54"
 LAYOUT_IMAGE_OUTPUT_NODE_ID = "55"
 REQUEST_TIMEOUT_SECONDS = 30
+
+DEFAULT_SIZE = "One inch\t\t(413, 295)"
+DEFAULT_BGCOLOR = "White"
+ALLOWED_SIZES = {
+	"One inch\t\t(413, 295)",
+	"Two inches\t\t(626, 413)",
+}
+ALLOWED_BGCOLORS = {
+	"White",
+	"Blue",
+	"Red",
+	"Dark Blue",
+	"Light Grey",
+}
 
 
 def _http_post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -50,15 +65,21 @@ def _load_workflow_template() -> dict[str, Any]:
 	return data
 
 
-def build_id_photo_workflow(uploaded_filename: str) -> dict[str, Any]:
+def build_id_photo_workflow(uploaded_filename: str, size: str = DEFAULT_SIZE, bgcolor: str = DEFAULT_BGCOLOR) -> dict[str, Any]:
 	workflow = deepcopy(_load_workflow_template())
 	image_url = f"{BACKEND_BASE_URL}/uploads/{uploaded_filename}"
+	normalized_size = size if size in ALLOWED_SIZES else DEFAULT_SIZE
+	normalized_bgcolor = bgcolor if bgcolor in ALLOWED_BGCOLORS else DEFAULT_BGCOLOR
 
 	# Node 52 in the current workflow is "Load Image From Url (mtb)".
 	if UPLOAD_IMAGE_NODE_ID not in workflow or "inputs" not in workflow[UPLOAD_IMAGE_NODE_ID]:
 		raise ValueError(f"Workflow node '{UPLOAD_IMAGE_NODE_ID}' with inputs is missing")
+	if PARAMS_NODE_ID not in workflow or "inputs" not in workflow[PARAMS_NODE_ID]:
+		raise ValueError(f"Workflow node '{PARAMS_NODE_ID}' with inputs is missing")
 
 	workflow[UPLOAD_IMAGE_NODE_ID]["inputs"]["url"] = image_url
+	workflow[PARAMS_NODE_ID]["inputs"]["size"] = normalized_size
+	workflow[PARAMS_NODE_ID]["inputs"]["bgcolor"] = normalized_bgcolor
 	return workflow
 
 
@@ -116,8 +137,13 @@ def _build_view_url(image_meta: dict[str, str]) -> str:
 	return f"{COMFY_BASE_URL}/view?{query}"
 
 
-def run_id_photo_workflow(uploaded_filename: str, timeout_seconds: int = 180) -> dict[str, str]:
-	workflow = build_id_photo_workflow(uploaded_filename)
+def run_id_photo_workflow(
+	uploaded_filename: str,
+	size: str = DEFAULT_SIZE,
+	bgcolor: str = DEFAULT_BGCOLOR,
+	timeout_seconds: int = 180,
+) -> dict[str, str]:
+	workflow = build_id_photo_workflow(uploaded_filename, size=size, bgcolor=bgcolor)
 	prompt_id = queue_prompt(workflow)
 
 	deadline = time.time() + timeout_seconds
@@ -132,6 +158,8 @@ def run_id_photo_workflow(uploaded_filename: str, timeout_seconds: int = 180) ->
 			if single_image_meta and layout_image_meta:
 				return {
 					"prompt_id": prompt_id,
+					"size": size if size in ALLOWED_SIZES else DEFAULT_SIZE,
+					"bgcolor": bgcolor if bgcolor in ALLOWED_BGCOLORS else DEFAULT_BGCOLOR,
 					"preview_url": _build_view_url(single_image_meta),
 					"single_preview_url": _build_view_url(single_image_meta),
 					"single_filename": single_image_meta["filename"],
