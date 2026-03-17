@@ -6,8 +6,34 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .comfy_service import run_id_photo_workflow
+from .comfy_service import run_id_photo_workflow, run_ip_group_workflow
 from .intent_service import detect_intent
+
+
+IP_ASSET_KEYWORD_MAP: list[tuple[list[str], str, str]] = [
+    (["赫敏"], "ip_01_hermione.webp", "赫敏"),
+    (["特朗普", "川普"], "ip_02_trump.webp", "特朗普"),
+    (["钢铁侠", "ironman"], "ip_03_ironman.webp", "钢铁侠"),
+    (["小黄人", "minion"], "ip_04_minion.webp", "小黄人"),
+    (["马斯克", "musk"], "ip_05_musk.webp", "马斯克"),
+    (["蜘蛛侠", "spiderman", "spider-man"], "ip_06_spiderman.webp", "蜘蛛侠"),
+    (["哈利波特三人组", "哈利波特", "harry potter"], "ip_07_harry_potter_trio.webp", "哈利波特三人组"),
+    (["赫敏2", "赫敏 第二张", "hermione 2"], "ip_08_hermione.webp", "赫敏(2)"),
+    (["擎天柱", "optimus prime"], "ip_09_optimus_prime.webp", "擎天柱"),
+    (["蜘蛛侠2", "蜘蛛侠 第二张", "spiderman 2"], "ip_10_spiderman.webp", "蜘蛛侠(2)"),
+]
+
+
+def _match_ip_asset(input_text: str) -> tuple[str, str] | None:
+    normalized = (input_text or "").strip().lower()
+    if not normalized:
+        return None
+
+    for keywords, filename, label in IP_ASSET_KEYWORD_MAP:
+        if any(keyword.lower() in normalized for keyword in keywords):
+            return filename, label
+
+    return None
 
 
 @dataclass
@@ -94,6 +120,49 @@ def run_task(task_id: str, uploaded_file: Path | None = None) -> None:
                 "layout_filename": comfy_result.get("layout_filename"),
                 "note": "已接入本地 ComfyUI 证件照工作流。",
             }
+        elif task.intent == "ip_group" and uploaded_file is not None:
+            matched_asset = _match_ip_asset(task.input_text)
+            if matched_asset:
+                ip_asset_filename, ip_asset_label = matched_asset
+                task.progress = 35
+                task.message = f"IP合影工作流准备中: {ip_asset_label}"
+                print(f"[DEBUG] Preparing ComfyUI ip group workflow for {task_id}, asset: {ip_asset_filename}")
+                time.sleep(0.4)
+
+                task.progress = 55
+                task.message = "已提交 ComfyUI，等待生成结果..."
+                comfy_result = run_ip_group_workflow(uploaded_file.name, ip_asset_filename=ip_asset_filename)
+                print(f"[DEBUG] ComfyUI ip-group done for {task_id}, prompt_id: {comfy_result.get('prompt_id')}")
+
+                task.progress = 95
+                task.message = "合影生成完成，整理结果中..."
+                task.result = {
+                    "type": "comfyui_ip_group",
+                    "intent": task.intent,
+                    "confidence": task.confidence,
+                    "reason": task.reason,
+                    "source": task.source,
+                    "model": task.model,
+                    "preview_url": comfy_result.get("preview_url"),
+                    "comfy_prompt_id": comfy_result.get("prompt_id"),
+                    "group_filename": comfy_result.get("group_filename"),
+                    "ip_asset": comfy_result.get("ip_asset_filename"),
+                    "note": f"已接入 IP 合影工作流，命中素材: {ip_asset_label}",
+                }
+            else:
+                task.progress = 95
+                task.message = "未命中 IP 素材关键词，回退演示流程"
+                result_url = f"/uploads/{uploaded_file.name}"
+                task.result = {
+                    "type": "demo",
+                    "intent": task.intent,
+                    "confidence": task.confidence,
+                    "reason": task.reason,
+                    "source": task.source,
+                    "model": task.model,
+                    "preview_url": result_url,
+                    "note": "IP 合影意图已命中，但未识别到素材关键词。",
+                }
         else:
             # Temporary fallback for non-id-photo intents.
             steps = [

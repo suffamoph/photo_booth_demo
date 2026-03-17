@@ -12,10 +12,14 @@ from uuid import uuid4
 COMFY_BASE_URL = "http://127.0.0.1:8188"
 BACKEND_BASE_URL = "http://127.0.0.1:8000"
 WORKFLOW_FILE = Path(__file__).resolve().parents[1] / "workflows" / "idphoto_workflow_demo_api.json"
+IP_GROUP_WORKFLOW_FILE = Path(__file__).resolve().parents[1] / "workflows" / "IP_group_workflow_demo.json"
 UPLOAD_IMAGE_NODE_ID = "52"
 PARAMS_NODE_ID = "46"
 SINGLE_IMAGE_OUTPUT_NODE_ID = "54"
 LAYOUT_IMAGE_OUTPUT_NODE_ID = "55"
+IP_GROUP_USER_IMAGE_NODE_ID = "1"
+IP_GROUP_ASSET_IMAGE_NODE_ID = "13"
+IP_GROUP_OUTPUT_NODE_ID = "21"
 REQUEST_TIMEOUT_SECONDS = 30
 
 DEFAULT_SIZE = "One inch\t\t(413, 295)"
@@ -62,6 +66,14 @@ def _load_workflow_template() -> dict[str, Any]:
 		data = json.load(f)
 	if not isinstance(data, dict):
 		raise ValueError("Workflow template is not a JSON object")
+	return data
+
+
+def _load_ip_group_workflow_template() -> dict[str, Any]:
+	with open(IP_GROUP_WORKFLOW_FILE, encoding="utf-8") as f:
+		data = json.load(f)
+	if not isinstance(data, dict):
+		raise ValueError("IP group workflow template is not a JSON object")
 	return data
 
 
@@ -169,3 +181,46 @@ def run_id_photo_workflow(
 		time.sleep(1.0)
 
 	raise TimeoutError("ComfyUI generation timeout")
+
+
+def build_ip_group_workflow(uploaded_filename: str, ip_asset_filename: str) -> dict[str, Any]:
+	workflow = deepcopy(_load_ip_group_workflow_template())
+	user_image_url = f"{BACKEND_BASE_URL}/uploads/{uploaded_filename}"
+	ip_asset_url = f"{BACKEND_BASE_URL}/ip_assets/{ip_asset_filename}"
+
+	if IP_GROUP_USER_IMAGE_NODE_ID not in workflow or "inputs" not in workflow[IP_GROUP_USER_IMAGE_NODE_ID]:
+		raise ValueError(f"Workflow node '{IP_GROUP_USER_IMAGE_NODE_ID}' with inputs is missing")
+	if IP_GROUP_ASSET_IMAGE_NODE_ID not in workflow or "inputs" not in workflow[IP_GROUP_ASSET_IMAGE_NODE_ID]:
+		raise ValueError(f"Workflow node '{IP_GROUP_ASSET_IMAGE_NODE_ID}' with inputs is missing")
+
+	workflow[IP_GROUP_USER_IMAGE_NODE_ID]["inputs"]["url"] = user_image_url
+	workflow[IP_GROUP_ASSET_IMAGE_NODE_ID]["inputs"]["url"] = ip_asset_url
+	return workflow
+
+
+def run_ip_group_workflow(
+	uploaded_filename: str,
+	ip_asset_filename: str,
+	timeout_seconds: int = 180,
+) -> dict[str, str]:
+	workflow = build_ip_group_workflow(uploaded_filename, ip_asset_filename)
+	prompt_id = queue_prompt(workflow)
+
+	deadline = time.time() + timeout_seconds
+	history_url = f"{COMFY_BASE_URL}/history/{prompt_id}"
+
+	while time.time() < deadline:
+		history = _http_get_json(history_url)
+		history_item = history.get(prompt_id)
+		if isinstance(history_item, dict):
+			group_image_meta = _extract_image_meta(history_item, IP_GROUP_OUTPUT_NODE_ID)
+			if group_image_meta:
+				return {
+					"prompt_id": prompt_id,
+					"preview_url": _build_view_url(group_image_meta),
+					"group_filename": group_image_meta["filename"],
+					"ip_asset_filename": ip_asset_filename,
+				}
+		time.sleep(1.0)
+
+	raise TimeoutError("ComfyUI ip-group generation timeout")

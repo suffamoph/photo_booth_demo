@@ -33,7 +33,7 @@ VALID_INTENTS = {
 }
 
 SYSTEM_PROMPT = (
-    "You are an intent classifier for an AI photo booth app. "
+    "You are an intent classifier for an AI photo booth app. 用户输入自然语言后，你将根据内容判断属于intent中的哪一类，其中和名人或知名角色合影类型都归属于IP_group。在景点或地标合影属于virtual checkin"
     "Return only JSON with keys: intent, confidence, reason. "
     "intent must be one of the allowed intents. "
     "confidence must be a float in [0,1]. "
