@@ -50,6 +50,10 @@ function renderIntent(data) {
   intentSource.textContent = data.source || "-";
 }
 
+function renderRawResult(data) {
+  intentBox.textContent = JSON.stringify(data, null, 2);
+}
+
 function closeStream() {
   if (streamSource) {
     streamSource.close();
@@ -81,13 +85,15 @@ form.addEventListener("submit", async (event) => {
     }
 
     const data = await resp.json();
-    intentBox.textContent = JSON.stringify(data, null, 2);
-  renderIntent(data);
+    renderRawResult(data);
+    renderIntent(data);
 
     streamSource = new EventSource(`/api/tasks/${data.task_id}/stream`);
     streamSource.addEventListener("progress", (message) => {
       const payload = JSON.parse(message.data);
       setProgress(payload.progress, payload.message);
+      renderRawResult(payload);
+      renderIntent(payload);
 
       if (payload.result && payload.result.preview_url) {
         preview.src = payload.result.preview_url;

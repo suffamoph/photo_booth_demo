@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from pathlib import Path
 from typing import Any
 from urllib import error, request
 
@@ -39,21 +40,24 @@ SYSTEM_PROMPT = (
     f"Allowed intents: {', '.join(sorted(VALID_INTENTS))}."
 )
 
+
+def _load_intent_keywords() -> dict[str, list[str]]:
+    """Load intent keywords from JSON configuration."""
+    config_file = Path(__file__).parent.parent / "config" / "intent_keywords.json"
+    with open(config_file, encoding="utf-8") as f:
+        return json.load(f)
+
+
+INTENT_KEYWORDS = _load_intent_keywords()
+
+
 def _rule_based_detect(text: str) -> IntentResult:
     normalized = (text or "").strip().lower()
 
     if not normalized:
         return IntentResult(intent="chat", confidence=0.4, reason="empty input", source="rule", model="")
 
-    intent_keywords = {
-        "id_photo": ["证件", "证件照", "passport", "id photo"],
-        "portrait": ["写真", "人像", "portrait"],
-        "ip_group": ["ip", "合影", "同框"],
-        "virtual_checkin": ["打卡", "景点", "旅行", "check in"],
-        "cloud_print": ["打印", "云打印", "print"],
-    }
-
-    for intent, words in intent_keywords.items():
+    for intent, words in INTENT_KEYWORDS.items():
         if any(word in normalized for word in words):
             return IntentResult(
                 intent=intent,

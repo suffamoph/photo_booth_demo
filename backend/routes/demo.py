@@ -5,10 +5,9 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
-from backend.services.intent_service import detect_intent
 from backend.services.task_service import create_task, get_task, run_task
 
 router = APIRouter(tags=["demo"])
@@ -19,10 +18,10 @@ UPLOAD_DIR = BASE_DIR / "data" / "uploads"
 
 @router.post("/process")
 async def process_request(
+    background_tasks: BackgroundTasks,
     input_text: str = Form(...),
     photo: UploadFile | None = File(default=None),
 ) -> dict:
-    intent = detect_intent(input_text)
     saved_path: Path | None = None
 
     if photo:
@@ -32,16 +31,18 @@ async def process_request(
         content = await photo.read()
         saved_path.write_bytes(content)
 
-    task = create_task(input_text=input_text, intent=intent)
-    asyncio.create_task(run_task(task.task_id, uploaded_file=saved_path))
+    # Create task
+    task = create_task(input_text=input_text)
+    print(f"[DEBUG] Created task: {task.task_id}, input: {input_text}")
+    
+    # Use FastAPI BackgroundTasks (official way)
+    background_tasks.add_task(run_task, task.task_id, saved_path)
+    print(f"[DEBUG] Added background task for {task.task_id}")
 
     return {
         "task_id": task.task_id,
-        "intent": intent.intent,
-        "confidence": intent.confidence,
-        "reason": intent.reason,
-        "source": intent.source,
-        "model": intent.model,
+        "status": "queued",
+        "message": "等待处理中...",
     }
 
 
@@ -57,6 +58,10 @@ def task_detail(task_id: str) -> dict:
         "progress": task.progress,
         "message": task.message,
         "intent": task.intent,
+        "confidence": task.confidence,
+        "reason": task.reason,
+        "source": task.source,
+        "model": task.model,
         "result": task.result,
     }
 
@@ -77,6 +82,10 @@ async def task_stream(task_id: str) -> StreamingResponse:
                 "progress": task.progress,
                 "message": task.message,
                 "intent": task.intent,
+                "confidence": task.confidence,
+                "reason": task.reason,
+                "source": task.source,
+                "model": task.model,
                 "result": task.result,
             }
             yield f"event: progress\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
