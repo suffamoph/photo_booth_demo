@@ -20,16 +20,15 @@ UPLOAD_DIR = BASE_DIR / "data" / "uploads"
 async def process_request(
     background_tasks: BackgroundTasks,
     input_text: str = Form(...),
-    photo: UploadFile | None = File(default=None),
+    photo: UploadFile = File(...),
 ) -> dict:
     saved_path: Path | None = None
 
-    if photo:
-        suffix = Path(photo.filename or "upload.jpg").suffix or ".jpg"
-        filename = f"{uuid4()}{suffix}"
-        saved_path = UPLOAD_DIR / filename
-        content = await photo.read()
-        saved_path.write_bytes(content)
+    suffix = Path(photo.filename or "upload.jpg").suffix or ".jpg"
+    filename = f"{uuid4()}{suffix}"
+    saved_path = UPLOAD_DIR / filename
+    content = await photo.read()
+    saved_path.write_bytes(content)
 
     # Create task
     task = create_task(input_text=input_text)

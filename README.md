@@ -11,7 +11,7 @@
 2. 用户上传一张照片（模拟拍照输入）。
 3. 后端完成意图识别与任务创建。
 4. 前端实时看到任务进度。
-5. 返回处理结果（当前 Demo 先返回预览，后续接入 ComfyUI 真正生成）。
+5. 返回处理结果（证件照意图已接入本地 ComfyUI 工作流生成）。
 
 ## 当前实现状态
 已实现一个可运行的最小版本：
@@ -27,9 +27,9 @@
 2. HTML + JS + CSS（前端页面）
 3. 本地文件存储（Demo 阶段不引入数据库）
 
-你的已有能力可在下一阶段接入：
+你的已有能力可在下一阶段继续接入：
 1. Ollama / OpenAI 兼容 API（LLM 调用）
-2. ComfyUI（证件照、写真等工作流）
+2. ComfyUI（写真、IP 合影等更多工作流）
 3. 素材库（IP 形象、写真模板、虚拟背景）
 
 ## 目录结构
@@ -42,8 +42,11 @@ photo_booth_project/
 │  │  └─ demo.py
 │  ├─ services/
 │  │  ├─ __init__.py
+│  │  ├─ comfy_service.py
 │  │  ├─ intent_service.py
 │  │  └─ task_service.py
+│  ├─ workflows/
+│  │  └─ idphoto_workflow_demo_api.json
 │  └─ data/
 │     └─ uploads/
 ├─ frontend/
@@ -78,6 +81,18 @@ uvicorn backend.app:app --reload
 - `TEMPERATURE = 0.0`
 
 若需修改 LLM 接入参数或切换模型，请直接编辑 `backend/services/intent_service.py` 顶部的配置常量。
+
+## ComfyUI 证件照工作流
+当前行为：
+1. 当识别意图为 `id_photo` 且上传了图片时，后端会调用本地 ComfyUI。
+2. 工作流模板文件：`backend/workflows/idphoto_workflow_demo_api.json`
+3. 后端会把工作流中节点 `52` 的 `inputs.url` 替换为当前上传图片地址，然后提交到 ComfyUI。
+
+ComfyUI 连接参数（硬编码在 `backend/services/comfy_service.py`）：
+- `COMFY_BASE_URL = "http://127.0.0.1:8188"`
+- `BACKEND_BASE_URL = "http://127.0.0.1:8000"`
+
+说明：你后续补充“性别 / 服饰 / 底色”参数表后，可在 `backend/services/comfy_service.py` 中把对应节点参数改成动态映射。
 
 ## 可用接口（Demo）
 1. `POST /api/process`

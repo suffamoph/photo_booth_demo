@@ -1,0 +1,184 @@
+{
+  "33": {
+    "inputs": {
+      "images": [
+        "45",
+        1
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "40": {
+    "inputs": {
+      "input_img": [
+        "45",
+        1
+      ],
+      "normal_params": [
+        "46",
+        0
+      ]
+    },
+    "class_type": "AddBackgroundNode",
+    "_meta": {
+      "title": "AddBackgroundNode"
+    }
+  },
+  "42": {
+    "inputs": {
+      "input_img": [
+        "40",
+        0
+      ],
+      "normal_params": [
+        "46",
+        0
+      ]
+    },
+    "class_type": "LaterProcessNode",
+    "_meta": {
+      "title": "LaterProcessNode"
+    }
+  },
+  "44": {
+    "inputs": {
+      "input_img": [
+        "42",
+        0
+      ],
+      "normal_params": [
+        "46",
+        0
+      ]
+    },
+    "class_type": "HivisionLayOutNode",
+    "_meta": {
+      "title": "HivisionLayOutNode"
+    }
+  },
+  "45": {
+    "inputs": {
+      "face_alignment": true,
+      "change_bg_only": false,
+      "crop_only": false,
+      "matting_model": "modnet_photographic_portrait_matting",
+      "face_detect_model": "mtcnn",
+      "head_measure_ratio": 0.2,
+      "top_distance": 0.12,
+      "whitening_strength": 2,
+      "brightness_strength": 0,
+      "contrast_strength": 0,
+      "saturation_strength": 0,
+      "sharpen_strength": 0,
+      "input_img": [
+        "52",
+        0
+      ],
+      "normal_params": [
+        "46",
+        0
+      ]
+    },
+    "class_type": "HivisionNode",
+    "_meta": {
+      "title": "HivisionNode"
+    }
+  },
+  "46": {
+    "inputs": {
+      "size": "One inch\t\t(413, 295)",
+      "bgcolor": "White",
+      "render": "pure_color",
+      "kb": 300,
+      "dpi": 300
+    },
+    "class_type": "ENHivisionParamsNode",
+    "_meta": {
+      "title": "ENHivisionParamsNode"
+    }
+  },
+  "47": {
+    "inputs": {
+      "width": 1344,
+      "height": 1344,
+      "interpolation": "nearest",
+      "method": "keep proportion",
+      "condition": "always",
+      "multiple_of": 0,
+      "image": [
+        "42",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "49": {
+    "inputs": {
+      "facedetection": "retinaface_resnet50",
+      "model": "GPEN-BFR-2048.onnx",
+      "visibility": 0.8000000000000002,
+      "codeformer_weight": 0.5,
+      "image": [
+        "47",
+        0
+      ]
+    },
+    "class_type": "ReActorRestoreFace",
+    "_meta": {
+      "title": "Restore Face 🌌 ReActor"
+    }
+  },
+  "52": {
+    "inputs": {
+      "url": "http://127.0.0.1:8188/view?filename=ComfyUI_temp_zirvz_00001_.png&subfolder=&type=temp"
+    },
+    "class_type": "Load Image From Url (mtb)",
+    "_meta": {
+      "title": "加载用户图"
+    }
+  },
+  "53": {
+    "inputs": {
+      "images": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "54": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "49",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "55": {
+    "inputs": {
+      "filename_prefix": "layout",
+      "images": [
+        "44",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}

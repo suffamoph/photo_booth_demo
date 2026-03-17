@@ -11,6 +11,7 @@ venv/
 # Demo runtime data
 backend/data/uploads/*
 !backend/data/uploads/.gitkeep
+tmp/
 
 # OS / editor artifacts
 .DS_Store

@@ -7,50 +7,69 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="page">
-      <section class="panel form-panel">
-        <h1>咔咔AI照相机 Demo</h1>
-        <p>输入自然语言并上传照片，模拟本地流程跑通。</p>
+    <main class="chat-shell">
+      <header class="chat-header">
+        <div>
+          <h1>咔咔AI照相机</h1>
+          <p>自然语言输入、意图识别、ComfyUI 生成，统一在对话流中查看。</p>
+        </div>
+      </header>
 
-        <form id="demo-form">
-          <label for="input-text">需求描述</label>
-          <textarea
-            id="input-text"
-            name="input-text"
-            rows="4"
-            placeholder="例如：帮我做一张白底证件照，偏正式"
-            required
-          ></textarea>
+      <section id="messages" class="messages" aria-live="polite">
+        <article class="message-row assistant-row">
+          <div class="avatar">K</div>
+          <div class="bubble assistant-bubble intro-bubble">
+            <p>在下方输入需求，并上传照片</p>
+          </div>
+        </article>
+      </section>
 
-          <label for="photo">上传照片（可选）</label>
-          <input id="photo" name="photo" type="file" accept="image/*" />
+      <section class="composer-wrap">
+        <form id="demo-form" class="composer">
+          <div class="composer-row">
+            <label class="upload-field upload-plus" for="photo" aria-label="上传照片">
+              <svg class="upload-plus-icon" viewBox="0 0 1024 1024" aria-hidden="true">
+                <path d="M478.364444 0v482.517333H0v65.514667h478.364444V1024H544V548.032H1024v-65.514667H543.992889V0z"></path>
+              </svg>
+              <input id="photo" name="photo" type="file" accept="image/*" required />
+            </label>
 
-          <button id="submit-btn" type="submit">开始处理</button>
+            <label class="sr-only" for="input-text">需求描述</label>
+            <textarea
+              id="input-text"
+              name="input-text"
+              rows="1"
+              placeholder="例如：帮我做一张白底证件照"
+              required
+            ></textarea>
+
+            <button id="submit-btn" type="submit">发送</button>
+          </div>
+
+          <div id="composer-preview-wrap" class="composer-preview-wrap" hidden>
+            <button id="composer-preview-remove" class="composer-preview-remove" type="button" aria-label="移除待发送图片">×</button>
+            <button id="composer-preview-button" class="composer-preview-button" type="button" aria-label="查看待发送图片大图">
+              <img id="composer-preview-image" class="composer-preview-image" alt="待发送图片预览" />
+            </button>
+          </div>
         </form>
       </section>
-
-      <section class="panel result-panel">
-        <h2>任务进度</h2>
-        <div class="progress-track">
-          <div id="progress-bar" class="progress-bar"></div>
-        </div>
-        <p id="progress-text">等待开始</p>
-
-        <h2>解析意图</h2>
-        <div class="intent-card">
-          <p><strong>意图编码：</strong><span id="intent-code">-</span></p>
-          <p><strong>意图名称：</strong><span id="intent-label">-</span></p>
-          <p><strong>置信度：</strong><span id="intent-confidence">-</span></p>
-          <p><strong>识别来源：</strong><span id="intent-source">-</span></p>
-        </div>
-
-        <h2>识别结果</h2>
-        <pre id="intent-box">-</pre>
-
-        <h2>生成预览</h2>
-        <img id="preview" alt="生成结果预览" />
-      </section>
     </main>
+
+    <div id="lightbox" class="lightbox" hidden>
+      <button id="lightbox-close" class="lightbox-close" type="button" aria-label="关闭大图">关闭</button>
+      <img id="lightbox-image" class="lightbox-image" alt="大图预览" />
+    </div>
+
+    <div id="json-modal" class="json-modal" hidden>
+      <div class="json-modal-panel">
+        <div class="json-modal-head">
+          <h2>识别结果 JSON</h2>
+          <button id="json-modal-close" class="json-modal-close" type="button" aria-label="关闭 JSON 预览">关闭</button>
+        </div>
+        <pre id="json-modal-content" class="json-modal-content">-</pre>
+      </div>
+    </div>
 
     <script src="/app.js"></script>
   </body>
