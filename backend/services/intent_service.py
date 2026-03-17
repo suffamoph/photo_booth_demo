@@ -58,7 +58,8 @@ def _rule_based_detect(text: str) -> IntentResult:
         return IntentResult(intent="chat", confidence=0.4, reason="empty input", source="rule", model="")
 
     for intent, words in INTENT_KEYWORDS.items():
-        if any(word in normalized for word in words):
+        valid_words = [word.strip().lower() for word in words if isinstance(word, str) and word.strip()]
+        if any(word in normalized for word in valid_words):
             return IntentResult(
                 intent=intent,
                 confidence=0.88,
