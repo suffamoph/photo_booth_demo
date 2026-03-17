@@ -1,0 +1,301 @@
+{
+  "1": {
+    "inputs": {
+      "url": "https://ts2.tc.mm.bing.net/th/id/OIP-C.aXqvJREza715Dd_Ub-mfywAAAA?rs=1&pid=ImgDetMain&o=7&rm=3"
+    },
+    "class_type": "Load Image From Url (mtb)",
+    "_meta": {
+      "title": "用户图"
+    }
+  },
+  "3": {
+    "inputs": {
+      "direction": "right",
+      "match_image_size": true,
+      "image1": [
+        "20",
+        0
+      ],
+      "image2": [
+        "18",
+        0
+      ]
+    },
+    "class_type": "ImageConcanate",
+    "_meta": {
+      "title": "Image Concatenate"
+    }
+  },
+  "6": {
+    "inputs": {
+      "rem_mode": "RMBG-1.4",
+      "image_output": "Hide",
+      "save_prefix": "ComfyUI",
+      "torchscript_jit": false,
+      "add_background": "none",
+      "refine_foreground": false,
+      "images": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "easy imageRemBg",
+    "_meta": {
+      "title": "Image Remove Bg"
+    }
+  },
+  "7": {
+    "inputs": {
+      "x": 0,
+      "y": 0,
+      "offset_x": 0,
+      "offset_y": 0,
+      "destination": [
+        "8",
+        0
+      ],
+      "source": [
+        "17",
+        0
+      ],
+      "mask": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "ImageComposite+",
+    "_meta": {
+      "title": "🔧 Image Composite"
+    }
+  },
+  "8": {
+    "inputs": {
+      "width": [
+        "9",
+        0
+      ],
+      "height": [
+        "9",
+        1
+      ],
+      "red": 255,
+      "green": 255,
+      "blue": 255
+    },
+    "class_type": "Image Blank",
+    "_meta": {
+      "title": "Image Blank"
+    }
+  },
+  "9": {
+    "inputs": {
+      "image": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "easy imageSize",
+    "_meta": {
+      "title": "ImageSize"
+    }
+  },
+  "10": {
+    "inputs": {
+      "image": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "easy imageSize",
+    "_meta": {
+      "title": "ImageSize"
+    }
+  },
+  "11": {
+    "inputs": {
+      "width": [
+        "10",
+        0
+      ],
+      "height": [
+        "10",
+        1
+      ],
+      "red": 255,
+      "green": 255,
+      "blue": 255
+    },
+    "class_type": "Image Blank",
+    "_meta": {
+      "title": "Image Blank"
+    }
+  },
+  "12": {
+    "inputs": {
+      "x": 0,
+      "y": 0,
+      "offset_x": 0,
+      "offset_y": 0,
+      "destination": [
+        "11",
+        0
+      ],
+      "source": [
+        "16",
+        0
+      ],
+      "mask": [
+        "14",
+        1
+      ]
+    },
+    "class_type": "ImageComposite+",
+    "_meta": {
+      "title": "🔧 Image Composite"
+    }
+  },
+  "13": {
+    "inputs": {
+      "url": "https://pic17.photophoto.cn/20101207/0036036396580662_b.jpg"
+    },
+    "class_type": "Load Image From Url (mtb)",
+    "_meta": {
+      "title": "IP形象图"
+    }
+  },
+  "14": {
+    "inputs": {
+      "rem_mode": "RMBG-1.4",
+      "image_output": "Hide",
+      "save_prefix": "ComfyUI",
+      "torchscript_jit": false,
+      "add_background": "none",
+      "refine_foreground": false,
+      "images": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "easy imageRemBg",
+    "_meta": {
+      "title": "Image Remove Bg"
+    }
+  },
+  "16": {
+    "inputs": {
+      "width": 1280,
+      "height": 1280,
+      "upscale_method": "bilinear",
+      "keep_proportion": "resize",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 8,
+      "device": "cpu",
+      "image": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image v2"
+    }
+  },
+  "17": {
+    "inputs": {
+      "width": 1280,
+      "height": 1280,
+      "upscale_method": "bilinear",
+      "keep_proportion": "resize",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 8,
+      "device": "cpu",
+      "image": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image v2"
+    }
+  },
+  "18": {
+    "inputs": {
+      "image": [
+        "12",
+        0
+      ],
+      "mask": [
+        "14",
+        1
+      ]
+    },
+    "class_type": "ImageCropByMask",
+    "_meta": {
+      "title": "Image Crop By Mask"
+    }
+  },
+  "19": {
+    "inputs": {
+      "images": [
+        "18",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "20": {
+    "inputs": {
+      "image": [
+        "7",
+        0
+      ],
+      "mask": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "ImageCropByMask",
+    "_meta": {
+      "title": "Image Crop By Mask"
+    }
+  },
+  "21": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "22",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "22": {
+    "inputs": {
+      "top_thickness": 204,
+      "bottom_thickness": 166,
+      "left_thickness": 160,
+      "right_thickness": 167,
+      "border_color": "white",
+      "outline_thickness": 0,
+      "outline_color": "white",
+      "border_color_hex": "#000000",
+      "image": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "CR Image Border",
+    "_meta": {
+      "title": "🌁 CR Image Border"
+    }
+  }
+}
