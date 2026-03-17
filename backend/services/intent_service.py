@@ -1,0 +1,176 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+import json
+from typing import Any
+from urllib import error, request
+
+
+@dataclass
+class IntentResult:
+    intent: str
+    confidence: float
+    reason: str
+    source: str
+    model: str = ""
+
+
+# Hardcoded configuration
+PROVIDER = "ollama"
+MODEL = "qwen3.5:9b"
+BASE_URL = "http://127.0.0.1:11434"
+TIMEOUT_SECONDS = 20
+TEMPERATURE = 0.0
+
+VALID_INTENTS = {
+    "chat",
+    "id_photo",
+    "portrait",
+    "ip_group",
+    "virtual_checkin",
+    "cloud_print",
+}
+
+SYSTEM_PROMPT = (
+    "You are an intent classifier for an AI photo booth app. "
+    "Return only JSON with keys: intent, confidence, reason. "
+    "intent must be one of the allowed intents. "
+    "confidence must be a float in [0,1]. "
+    f"Allowed intents: {', '.join(sorted(VALID_INTENTS))}."
+)
+
+def _rule_based_detect(text: str) -> IntentResult:
+    normalized = (text or "").strip().lower()
+
+    if not normalized:
+        return IntentResult(intent="chat", confidence=0.4, reason="empty input", source="rule", model="")
+
+    intent_keywords = {
+        "id_photo": ["证件", "证件照", "passport", "id photo"],
+        "portrait": ["写真", "人像", "portrait"],
+        "ip_group": ["ip", "合影", "同框"],
+        "virtual_checkin": ["打卡", "景点", "旅行", "check in"],
+        "cloud_print": ["打印", "云打印", "print"],
+    }
+
+    for intent, words in intent_keywords.items():
+        if any(word in normalized for word in words):
+            return IntentResult(
+                intent=intent,
+                confidence=0.88,
+                reason=f"matched keywords for {intent}",
+                source="rule",
+                model="",
+            )
+
+    return IntentResult(intent="chat", confidence=0.7, reason="fallback to chat", source="rule", model="")
+
+
+def _read_json_from_text(text: str) -> dict[str, Any] | None:
+    stripped = (text or "").strip()
+    if not stripped:
+        return None
+
+    if stripped.startswith("```"):
+        parts = stripped.split("```")
+        for part in parts:
+            chunk = part.strip()
+            if not chunk:
+                continue
+            if chunk.startswith("json"):
+                chunk = chunk[4:].strip()
+            try:
+                parsed = json.loads(chunk)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                continue
+
+    left = stripped.find("{")
+    right = stripped.rfind("}")
+    if left >= 0 and right > left:
+        try:
+            parsed = json.loads(stripped[left : right + 1])
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            return None
+
+    try:
+        parsed = json.loads(stripped)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        return None
+
+    return None
+
+
+def _build_messages(text: str) -> list[dict[str, str]]:
+    user = f"User input: {text}"
+    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]
+
+
+
+def _post_json(url: str, payload: dict[str, Any], headers: dict[str, str], timeout_s: float) -> dict[str, Any]:
+    req = request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+    with request.urlopen(req, timeout=timeout_s) as resp:  # nosec B310
+        body = resp.read().decode("utf-8")
+    parsed = json.loads(body)
+    if not isinstance(parsed, dict):
+        raise ValueError("LLM response is not a JSON object")
+    return parsed
+
+
+def _llm_detect(text: str) -> IntentResult | None:
+    url = f"{BASE_URL}/api/chat"
+    payload = {
+        "model": MODEL,
+        "stream": False,
+        "format": "json",
+        "messages": _build_messages(text),
+        "options": {"temperature": TEMPERATURE},
+    }
+    headers = {"Content-Type": "application/json"}
+
+    raw = _post_json(url, payload, headers, TIMEOUT_SECONDS)
+    content = (raw.get("message") or {}).get("content", "")
+
+    parsed = _read_json_from_text(content)
+    if not parsed:
+        return None
+
+    intent = str(parsed.get("intent", "")).strip().lower()
+    if intent not in VALID_INTENTS:
+        return None
+
+    confidence_raw = parsed.get("confidence", 0.6)
+    try:
+        confidence = float(confidence_raw)
+    except (TypeError, ValueError):
+        confidence = 0.6
+    confidence = max(0.0, min(1.0, confidence))
+
+    reason = str(parsed.get("reason", "llm classified")).strip() or "llm classified"
+    return IntentResult(intent=intent, confidence=confidence, reason=reason, source="llm", model=MODEL)
+
+
+
+def detect_intent(text: str) -> IntentResult:
+    try:
+        llm_result = _llm_detect(text)
+        if llm_result:
+            return llm_result
+    except (error.URLError, error.HTTPError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+        fallback = _rule_based_detect(text)
+        fallback.reason = f"llm error: {exc}; {fallback.reason}"
+        fallback.source = "rule_fallback"
+        return fallback
+
+    return _rule_based_detect(text)
+

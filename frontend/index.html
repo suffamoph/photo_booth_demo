@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>咔咔AI照相机 Demo</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel form-panel">
+        <h1>咔咔AI照相机 Demo</h1>
+        <p>输入自然语言并上传照片，模拟本地流程跑通。</p>
+
+        <form id="demo-form">
+          <label for="input-text">需求描述</label>
+          <textarea
+            id="input-text"
+            name="input-text"
+            rows="4"
+            placeholder="例如：帮我做一张白底证件照，偏正式"
+            required
+          ></textarea>
+
+          <label for="photo">上传照片（可选）</label>
+          <input id="photo" name="photo" type="file" accept="image/*" />
+
+          <button id="submit-btn" type="submit">开始处理</button>
+        </form>
+      </section>
+
+      <section class="panel result-panel">
+        <h2>任务进度</h2>
+        <div class="progress-track">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <p id="progress-text">等待开始</p>
+
+        <h2>解析意图</h2>
+        <div class="intent-card">
+          <p><strong>意图编码：</strong><span id="intent-code">-</span></p>
+          <p><strong>意图名称：</strong><span id="intent-label">-</span></p>
+          <p><strong>置信度：</strong><span id="intent-confidence">-</span></p>
+          <p><strong>识别来源：</strong><span id="intent-source">-</span></p>
+        </div>
+
+        <h2>识别结果</h2>
+        <pre id="intent-box">-</pre>
+
+        <h2>生成预览</h2>
+        <img id="preview" alt="生成结果预览" />
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
