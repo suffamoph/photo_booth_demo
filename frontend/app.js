@@ -69,6 +69,28 @@ function renderIntent(data) {
   }
 }
 
+function renderAssistantResponse(data) {
+  if (!activeReplyView) {
+    return;
+  }
+
+  if (!activeReplyView.assistantResponse) {
+    return;
+  }
+
+  const responseText =
+    typeof data.response === "string" && data.response.trim()
+      ? data.response.trim()
+      : typeof data?.result?.response === "string"
+        ? data.result.response.trim()
+        : "";
+  if (!responseText) {
+    return;
+  }
+
+  activeReplyView.assistantResponse.textContent = responseText;
+}
+
 function renderRawResult(data) {
   if (!activeReplyView) {
     return;
@@ -264,6 +286,11 @@ function createAssistantMessage() {
   progressText.textContent = "0% - 等待开始";
   bubble.appendChild(progressText);
 
+  const assistantResponse = document.createElement("p");
+  assistantResponse.className = "message-text";
+  assistantResponse.textContent = "";
+  bubble.appendChild(assistantResponse);
+
   const intentCard = document.createElement("div");
   intentCard.className = "intent-card";
   intentCard.style.display = "none";
@@ -303,6 +330,7 @@ function createAssistantMessage() {
   return {
     progressBar,
     progressText,
+    assistantResponse,
     intentCard,
     intentMerged: intentCard.querySelector('[data-role="intent-merged"]'),
     intentConfidence: intentCard.querySelector('[data-role="intent-confidence"]'),
@@ -356,6 +384,7 @@ form.addEventListener("submit", async (event) => {
     streamSource.addEventListener("progress", (message) => {
       const payload = JSON.parse(message.data);
       setProgress(payload.progress, payload.message);
+      renderAssistantResponse(payload);
       renderRawResult(payload);
       renderIntent(payload);
 
@@ -375,6 +404,21 @@ form.addEventListener("submit", async (event) => {
 
       if (payload.status === "done" || payload.status === "failed") {
         closeStream();
+        // Final sync: fetch full task detail to ensure `response` is rendered.
+        fetch(`/api/tasks/${payload.task_id}`)
+          .then((resp) => (resp.ok ? resp.json() : null))
+          .then((detail) => {
+            if (!detail) {
+              return;
+            }
+            renderAssistantResponse(detail);
+            renderIntent(detail);
+            renderRawResult(detail);
+            scrollMessagesToBottom();
+          })
+          .catch(() => {
+            // Keep UI stable even if detail sync fails.
+          });
       }
     });
 

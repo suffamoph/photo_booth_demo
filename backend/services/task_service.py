@@ -82,6 +82,7 @@ class TaskState:
     intent: str = ""
     confidence: float = 0.0
     reason: str = ""
+    response: str = ""
     source: str = ""
     model: str = ""
     input_text: str = ""
@@ -120,6 +121,7 @@ def run_task(task_id: str, uploaded_file: Path | None = None) -> None:
         task.intent = intent_result.intent
         task.confidence = intent_result.confidence
         task.reason = intent_result.reason
+        task.response = intent_result.response
         task.source = intent_result.source
         task.model = intent_result.model
         task.progress = 20

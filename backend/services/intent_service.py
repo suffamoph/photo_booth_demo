@@ -12,6 +12,7 @@ class IntentResult:
     intent: str
     confidence: float
     reason: str
+    response: str
     source: str
     model: str = ""
 
@@ -34,15 +35,21 @@ VALID_INTENTS = {
 SYSTEM_PROMPT = """
 You are an intent classifier for an AI photo booth app. You will analyze the user input and classify their intent for photo-related tasks:
 - id_photo: Standard identification photos such as one-inch, two-inch, or any specific size photos for visas, IDs, licenses, resumes, or other scenarios with standard requirements.
-- portrait: Casual or aesthetic portrait photography.
+- portrait: Casual, creative, or aesthetic portrait photography.
 - ip_group: When users want to take a photo with a specific or famous person, character, or celebrity.
 - virtual_checkin: When users want to take a virtual photo as if they were in a certain place, attraction, famous building, venue, or other special locations.
 - chat: If the input does not match any of the types above.
 
-Return only JSON with keys: intent, confidence, reason.
+Return only JSON with keys: intent, reason, confidence, response.
+- reason should explain your reason for classification
+- response will be seen by users and should be converational and contextual
 - intent must be one of the allowed intents.
 - confidence must be a float in [0, 1].
 Allowed intents: {', '.join(sorted(VALID_INTENTS))}.
+
+If the classification is chat, then in the response key you should put behave conversationally in downstream handling,
+respond naturally to the user's input, and gently guide the user toward photo-related requests
+(for example, asking whether they would like to take an ID photo, portrait, or IP group photo).
 """
 
 
@@ -60,7 +67,14 @@ def _rule_based_detect(text: str) -> IntentResult:
     normalized = (text or "").strip().lower()
 
     if not normalized:
-        return IntentResult(intent="chat", confidence=0.4, reason="empty input", source="rule", model="")
+        return IntentResult(
+            intent="chat",
+            confidence=0.4,
+            reason="empty input",
+            response="你好呀，我是咔咔AI照相机。你想先拍一张证件照、写真，还是 IP 合影呢？",
+            source="rule",
+            model="",
+        )
 
     for intent, words in INTENT_KEYWORDS.items():
         valid_words = [word.strip().lower() for word in words if isinstance(word, str) and word.strip()]
@@ -69,11 +83,19 @@ def _rule_based_detect(text: str) -> IntentResult:
                 intent=intent,
                 confidence=0.88,
                 reason=f"matched keywords for {intent}",
+                response="已识别你的拍照需求，我们马上开始处理。",
                 source="rule",
                 model="",
             )
 
-    return IntentResult(intent="chat", confidence=0.7, reason="fallback to chat", source="rule", model="")
+    return IntentResult(
+        intent="chat",
+        confidence=0.7,
+        reason="fallback to chat",
+        response="我可以陪你聊，也可以帮你快速拍照。要不要先来一张证件照或写真？",
+        source="rule",
+        model="",
+    )
 
 
 def _read_json_from_text(text: str) -> dict[str, Any] | None:
@@ -167,7 +189,22 @@ def _llm_detect(text: str) -> IntentResult | None:
     confidence = max(0.0, min(1.0, confidence))
 
     reason = str(parsed.get("reason", "llm classified")).strip() or "llm classified"
-    return IntentResult(intent=intent, confidence=confidence, reason=reason, source="llm", model=MODEL)
+    response = str(parsed.get("response", "")).strip()
+
+    if not response:
+        if intent == "chat":
+            response = "我可以和你聊聊，也可以帮你拍照。你想先试试证件照、写真，还是 IP 合影？"
+        else:
+            response = "收到你的需求，我会按这个方向继续处理。"
+
+    return IntentResult(
+        intent=intent,
+        confidence=confidence,
+        reason=reason,
+        response=response,
+        source="llm",
+        model=MODEL,
+    )
 
 
 
@@ -190,5 +227,12 @@ def detect_intent(text: str) -> IntentResult:
         return rule_result
 
     # Step 3: Final fallback to chat intent
-    return IntentResult(intent="chat", confidence=0.5, reason="fallback to chat intent", source="fallback", model= "")
+    return IntentResult(
+        intent="chat",
+        confidence=0.5,
+        reason="fallback to chat intent",
+        response="我可以先帮你明确拍照需求。你现在更想做证件照、写真，还是 IP 合影？",
+        source="fallback",
+        model="",
+    )
 
