@@ -11,6 +11,7 @@ FRONTEND_DIR = BASE_DIR.parent / "frontend"
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
 IP_ASSETS_DIR = BASE_DIR.parent / "ip_assets"
+PORTRAIT_ASSETS_DIR = BASE_DIR.parent / "portrait_assets"
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -28,4 +29,5 @@ app.include_router(demo_router, prefix="/api")
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 app.mount("/ip_assets", StaticFiles(directory=str(IP_ASSETS_DIR)), name="ip_assets")
+app.mount("/portrait_assets", StaticFiles(directory=str(PORTRAIT_ASSETS_DIR)), name="portrait_assets")
 app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

@@ -13,6 +13,7 @@ COMFY_BASE_URL = "http://127.0.0.1:8188"
 BACKEND_BASE_URL = "http://127.0.0.1:8000"
 WORKFLOW_FILE = Path(__file__).resolve().parents[1] / "workflows" / "idphoto_workflow_demo_api.json"
 IP_GROUP_WORKFLOW_FILE = Path(__file__).resolve().parents[1] / "workflows" / "IP_group_workflow_demo.json"
+PORTRAIT_WORKFLOW_FILE = Path(__file__).resolve().parents[1] / "workflows" / "portrait_workflow_demo_api.json"
 UPLOAD_IMAGE_NODE_ID = "52"
 PARAMS_NODE_ID = "46"
 SINGLE_IMAGE_OUTPUT_NODE_ID = "54"
@@ -20,7 +21,11 @@ LAYOUT_IMAGE_OUTPUT_NODE_ID = "55"
 IP_GROUP_USER_IMAGE_NODE_ID = "1"
 IP_GROUP_ASSET_IMAGE_NODE_ID = "13"
 IP_GROUP_OUTPUT_NODE_ID = "21"
+PORTRAIT_USER_IMAGE_NODE_ID = "116"
+PORTRAIT_TEMPLATE_IMAGE_NODE_ID = "117"
+PORTRAIT_OUTPUT_NODE_ID = "159"
 REQUEST_TIMEOUT_SECONDS = 30
+DEFAULT_PORTRAIT_ASSET_FILENAME = "portrait_01_male_gufeng.webp"
 
 DEFAULT_SIZE = "One inch\t\t(413, 295)"
 DEFAULT_BGCOLOR = "White"
@@ -224,3 +229,59 @@ def run_ip_group_workflow(
 		time.sleep(1.0)
 
 	raise TimeoutError("ComfyUI ip-group generation timeout")
+
+def build_portrait_workflow(uploaded_filename: str, portrait_asset_filename: str | None = None) -> dict[str, Any]:
+	workflow = deepcopy(_load_portrait_workflow_template())
+	user_image_url = f"{BACKEND_BASE_URL}/uploads/{uploaded_filename}"
+	portrait_asset_url = (
+		f"{BACKEND_BASE_URL}/portrait_assets/{portrait_asset_filename}"
+		if portrait_asset_filename
+		else None
+	)
+
+	if PORTRAIT_USER_IMAGE_NODE_ID not in workflow or "inputs" not in workflow[PORTRAIT_USER_IMAGE_NODE_ID]:
+		raise ValueError(f"Workflow node '{PORTRAIT_USER_IMAGE_NODE_ID}' with inputs is missing")
+	if PORTRAIT_TEMPLATE_IMAGE_NODE_ID not in workflow or "inputs" not in workflow[PORTRAIT_TEMPLATE_IMAGE_NODE_ID]:
+		raise ValueError(f"Workflow node '{PORTRAIT_TEMPLATE_IMAGE_NODE_ID}' with inputs is missing")
+
+	workflow[PORTRAIT_USER_IMAGE_NODE_ID]["inputs"]["url"] = user_image_url
+	if portrait_asset_url:
+		workflow[PORTRAIT_TEMPLATE_IMAGE_NODE_ID]["inputs"]["url"] = portrait_asset_url
+	return workflow
+
+
+def _load_portrait_workflow_template() -> dict[str, Any]:
+    with open(PORTRAIT_WORKFLOW_FILE, encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError("Portrait workflow template is not a JSON object")
+    return data
+
+
+def run_portrait_workflow(
+	uploaded_filename: str,
+	portrait_asset_filename: str | None = None,
+	timeout_seconds: int = 180,
+) -> dict[str, str]:
+	selected_asset_filename = portrait_asset_filename or DEFAULT_PORTRAIT_ASSET_FILENAME
+	workflow = build_portrait_workflow(uploaded_filename, portrait_asset_filename=selected_asset_filename)
+	prompt_id = queue_prompt(workflow)
+
+	deadline = time.time() + timeout_seconds
+	history_url = f"{COMFY_BASE_URL}/history/{prompt_id}"
+
+	while time.time() < deadline:
+		history = _http_get_json(history_url)
+		history_item = history.get(prompt_id)
+		if isinstance(history_item, dict):
+			output_image_meta = _extract_image_meta(history_item, PORTRAIT_OUTPUT_NODE_ID)
+			if output_image_meta:
+				return {
+					"prompt_id": prompt_id,
+					"preview_url": _build_view_url(output_image_meta),
+					"output_filename": output_image_meta["filename"],
+					"portrait_asset_filename": selected_asset_filename,
+				}
+		time.sleep(1.0)
+
+	raise TimeoutError("ComfyUI portrait generation timeout")

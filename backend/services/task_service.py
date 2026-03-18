@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .comfy_service import run_id_photo_workflow, run_ip_group_workflow
+from .comfy_service import run_id_photo_workflow, run_ip_group_workflow, run_portrait_workflow
 from .intent_service import detect_intent
 
 
@@ -23,6 +23,21 @@ IP_ASSET_KEYWORD_MAP: list[tuple[list[str], str, str]] = [
     (["蜘蛛侠2", "蜘蛛侠 第二张", "spiderman 2"], "ip_10_spiderman.webp", "蜘蛛侠(2)"),
 ]
 
+PORTRAIT_ASSET_KEYWORD_MAP: list[tuple[list[str], int, str, str]] = [
+    (["male", "男", "男性", "古风", "国风"], 2, "portrait_01_male_gufeng.webp", "male 古风"),
+    (["male", "男", "男性", "现代", "职场", "形象照", "西装"], 3, "portrait_02_male_modern_office_suit_headshot.webp", "male 现代 职场 形象照 西装"),
+    (["female", "女", "女性", "法式", "田园"], 3, "portrait_03_female_french_pastoral.webp", "female 法式 田园"),
+    (["female", "女", "女性", "民族"], 2, "portrait_04_female_ethnic_style.webp", "female 民族"),
+    (["female", "女", "女性", "古装", "唐装"], 3, "portrait_05_female_tang_dynasty_hanfu.webp", "female 古装 唐装"),
+    (["female", "女", "女性", "古装", "汉服"], 3, "portrait_06_female_hanfu_classic.webp", "female 古装 汉服"),
+    (["male", "男", "男性", "古装", "皇帝"], 3, "portrait_07_male_emperor_costume.webp", "male 古装 皇帝"),
+    (["female", "女", "女性", "现代", "清新", "纯真"], 3, "portrait_08_female_modern_fresh_innocent.webp", "female 现代 清新 纯真"),
+    (["female", "女", "女性", "古装", "清宫", "故宫"], 3, "portrait_09_female_qing_palace_forbidden_city.webp", "female 古装 清宫 故宫"),
+    (["female", "女", "女性", "现代", "雪天", "氛围"], 3, "portrait_10_female_modern_snow_atmosphere.webp", "female 现代 雪天 氛围"),
+    (["male", "男", "男性", "现代"], 2, "portrait_11_male_modern_style.webp", "male 现代"),
+    (["female", "女", "女性", "现代", "气质", "形象照"], 3, "portrait_12_female_modern_elegant_headshot.webp", "female 现代 气质 形象照"),
+]
+
 
 def _match_ip_asset(input_text: str) -> tuple[str, str] | None:
     normalized = (input_text or "").strip().lower()
@@ -34,6 +49,28 @@ def _match_ip_asset(input_text: str) -> tuple[str, str] | None:
             return filename, label
 
     return None
+
+
+def _match_portrait_asset(input_text: str) -> tuple[str, str] | None:
+    normalized = (input_text or "").strip().lower()
+    if not normalized:
+        return None
+
+    best_match: tuple[int, float, str, str] | None = None
+    for keywords, min_hits, filename, label in PORTRAIT_ASSET_KEYWORD_MAP:
+        hits = sum(1 for keyword in keywords if keyword.lower() in normalized)
+        if hits < min_hits:
+            continue
+
+        score_ratio = hits / max(len(keywords), 1)
+        candidate = (hits, score_ratio, filename, label)
+        if best_match is None or candidate[:2] > best_match[:2]:
+            best_match = candidate
+
+    if best_match is None:
+        return None
+
+    return best_match[2], best_match[3]
 
 
 @dataclass
@@ -162,6 +199,61 @@ def run_task(task_id: str, uploaded_file: Path | None = None) -> None:
                     "model": task.model,
                     "preview_url": result_url,
                     "note": "IP 合影意图已命中，但未识别到素材关键词。",
+                }
+        elif task.intent == "portrait" and uploaded_file is not None:
+            matched_asset = _match_portrait_asset(task.input_text)
+            if matched_asset:
+                portrait_asset_filename, portrait_asset_label = matched_asset
+                task.progress = 35
+                task.message = f"写真工作流准备中: {portrait_asset_label}"
+                print(f"[DEBUG] Preparing ComfyUI portrait workflow for {task_id}, asset: {portrait_asset_filename}")
+                time.sleep(0.4)
+
+                task.progress = 55
+                task.message = "已提交 ComfyUI，等待生成结果..."
+                comfy_result = run_portrait_workflow(uploaded_file.name, portrait_asset_filename=portrait_asset_filename)
+                print(f"[DEBUG] ComfyUI portrait done for {task_id}, prompt_id: {comfy_result.get('prompt_id')}")
+
+                task.progress = 95
+                task.message = "写真生成完成，整理结果中..."
+                task.result = {
+                    "type": "comfyui_portrait",
+                    "intent": task.intent,
+                    "confidence": task.confidence,
+                    "reason": task.reason,
+                    "source": task.source,
+                    "model": task.model,
+                    "preview_url": comfy_result.get("preview_url"),
+                    "comfy_prompt_id": comfy_result.get("prompt_id"),
+                    "output_filename": comfy_result.get("output_filename"),
+                    "portrait_asset": comfy_result.get("portrait_asset_filename"),
+                    "note": f"已接入 ComfyUI 写真工作流，命中模板: {portrait_asset_label}",
+                }
+            else:
+                task.progress = 35
+                task.message = "未命中写真关键词，使用默认模板"
+                print(f"[DEBUG] Portrait keywords not matched for {task_id}, using default template")
+                time.sleep(0.4)
+
+                task.progress = 55
+                task.message = "已提交 ComfyUI，等待生成结果..."
+                comfy_result = run_portrait_workflow(uploaded_file.name)
+                print(f"[DEBUG] ComfyUI portrait done for {task_id}, prompt_id: {comfy_result.get('prompt_id')}")
+
+                task.progress = 95
+                task.message = "写真生成完成，整理结果中..."
+                task.result = {
+                    "type": "comfyui_portrait",
+                    "intent": task.intent,
+                    "confidence": task.confidence,
+                    "reason": task.reason,
+                    "source": task.source,
+                    "model": task.model,
+                    "preview_url": comfy_result.get("preview_url"),
+                    "comfy_prompt_id": comfy_result.get("prompt_id"),
+                    "output_filename": comfy_result.get("output_filename"),
+                    "portrait_asset": comfy_result.get("portrait_asset_filename"),
+                    "note": "已接入 ComfyUI 写真工作流，未命中关键词时使用默认模板。",
                 }
         else:
             # Temporary fallback for non-id-photo intents.

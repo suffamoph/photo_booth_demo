@@ -29,16 +29,21 @@ VALID_INTENTS = {
     "portrait",
     "ip_group",
     "virtual_checkin",
-    "cloud_print",
 }
 
-SYSTEM_PROMPT = (
-    "You are an intent classifier for an AI photo booth app. 用户输入自然语言后，你将根据内容判断属于intent中的哪一类，其中和名人或知名角色合影类型都归属于IP_group。在景点或地标合影属于virtual checkin"
-    "Return only JSON with keys: intent, confidence, reason. "
-    "intent must be one of the allowed intents. "
-    "confidence must be a float in [0,1]. "
-    f"Allowed intents: {', '.join(sorted(VALID_INTENTS))}."
-)
+SYSTEM_PROMPT = """
+You are an intent classifier for an AI photo booth app. You will analyze the user input and classify their intent for photo-related tasks:
+- id_photo: Standard identification photos such as one-inch, two-inch, or any specific size photos for visas, IDs, licenses, resumes, or other scenarios with standard requirements.
+- portrait: Casual or aesthetic portrait photography.
+- ip_group: When users want to take a photo with a specific or famous person, character, or celebrity.
+- virtual_checkin: When users want to take a virtual photo as if they were in a certain place, attraction, famous building, venue, or other special locations.
+- chat: If the input does not match any of the types above.
+
+Return only JSON with keys: intent, confidence, reason.
+- intent must be one of the allowed intents.
+- confidence must be a float in [0, 1].
+Allowed intents: {', '.join(sorted(VALID_INTENTS))}.
+"""
 
 
 def _load_intent_keywords() -> dict[str, list[str]]:
@@ -168,14 +173,22 @@ def _llm_detect(text: str) -> IntentResult | None:
 
 def detect_intent(text: str) -> IntentResult:
     try:
+        # Step 1: Try LLM-based detection
         llm_result = _llm_detect(text)
         if llm_result:
             return llm_result
     except (error.URLError, error.HTTPError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+        # Log LLM error and fallback to rule-based detection
         fallback = _rule_based_detect(text)
         fallback.reason = f"llm error: {exc}; {fallback.reason}"
         fallback.source = "rule_fallback"
         return fallback
 
-    return _rule_based_detect(text)
+    # Step 2: Fallback to rule-based detection if LLM fails silently
+    rule_result = _rule_based_detect(text)
+    if rule_result.intent != "chat":
+        return rule_result
+
+    # Step 3: Final fallback to chat intent
+    return IntentResult(intent="chat", confidence=0.5, reason="fallback to chat intent", source="fallback", model= "")
 
